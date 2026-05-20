@@ -194,3 +194,7 @@ body {
 .nav-item.active { color: var(--primary); background-color: var(--active-bg); }
 .nav-item:hover:not(.active) { color: var(--text-primary); }
 @keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+.pulse-anim { animation: pulse 2s infinite ease-in-out; }
+@keyframes fadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+.fade-up-anim { animation: fadeUp 0.8s ease-out forwards; }

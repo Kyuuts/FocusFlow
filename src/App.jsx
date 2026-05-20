@@ -73,6 +73,8 @@ function App() {
   const [modalTaskText, setModalTaskText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [user, setUser] = useState(null);
+  const [username, setUsername] = useState(() => localStorage.getItem('focusflow_username') || '');
+  const [showSplash, setShowSplash] = useState(true);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const timerRef = useRef(null);
 
@@ -85,12 +87,19 @@ function App() {
     localStorage.setItem('focusflow_xp', xp.toString());
     localStorage.setItem('focusflow_streak', streak.toString());
     localStorage.setItem('focusflow_completed', tasksCompleted.toString());
-  }, [tasks, xp, streak, tasksCompleted]);
+    localStorage.setItem('focusflow_username', username);
+  }, [tasks, xp, streak, tasksCompleted, username]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user);
+        if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
       }
     });
@@ -98,6 +107,7 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUser(session.user);
+        if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
       } else {
         setUser(null);
@@ -113,14 +123,14 @@ function App() {
       supabase.from('profiles').upsert({
         id: user.id,
         email: user.email,
-        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Warrior',
+        display_name: username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Warrior',
         xp: xp,
         avatar_url: user.user_metadata?.avatar_url
       }).then(({ error }) => {
         if (error) console.error("Error syncing XP:", error);
       });
     }
-  }, [xp, user]);
+  }, [xp, user, username]);
 
   useEffect(() => {
     if (activeTab === 'badges') {
@@ -259,6 +269,11 @@ function App() {
 
   const renderFocusTab = () => (
     <div className="tab-content">
+      <div style={{marginBottom: '4px'}}>
+        <h2 style={{fontSize: '1.2rem', fontWeight: 700}}>Hello, {username || 'Warrior'}! 👋</h2>
+        <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Ready to crush your goals today?</p>
+      </div>
+
       <div className="input-section">
         <textarea className="task-input" placeholder="Ketik tugas besar lo di sini..." rows={2} value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} disabled={isGenerating} />
         <button className="btn-primary" onClick={addTask} disabled={isGenerating} style={{opacity: isGenerating ? 0.7 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer'}}>
@@ -445,6 +460,21 @@ function App() {
         <p className="page-subtitle">Stay consistent, one focus session at a time.</p>
       </div>
 
+      <div className="stat-card" style={{flexDirection: 'column', alignItems: 'flex-start', padding: '16px 20px'}}>
+        <h3 style={{fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px'}}>Your Identity</h3>
+        <input 
+          type="text" 
+          value={username} 
+          onChange={(e) => setUsername(e.target.value)} 
+          placeholder="Enter your hero name..."
+          style={{
+            width: '100%', background: 'transparent', border: 'none', 
+            borderBottom: '2px solid var(--border-color)', color: 'var(--primary)', 
+            fontSize: '1.2rem', fontWeight: 'bold', outline: 'none', padding: '4px 0'
+          }}
+        />
+      </div>
+
       <div className="circle-progress-card">
         <div className="circle-progress" style={{'--progress': `${levelProgress}%`}}>
           <div className="circle-content">
@@ -555,6 +585,16 @@ function App() {
     </div>
   );
 
+  if (showSplash) {
+    return (
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)'}}>
+        <Target size={72} className="pulse-anim" />
+        <h1 style={{marginTop: '20px', fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)'}} className="fade-up-anim">FocusFlow</h1>
+        <p style={{color: 'var(--text-secondary)', marginTop: '8px'}} className="fade-up-anim">Stay focused. Get rewarded.</p>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px', textAlign: 'center', backgroundColor: 'var(--app-bg)', color: 'var(--text-primary)'}}>
@@ -584,6 +624,13 @@ function App() {
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{width: '24px', height: '24px'}} />
           Continue with Google
+        </button>
+
+        <button 
+          onClick={() => setIsLoggedIn(true)}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', marginTop: '24px', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
+        >
+          Skip & use offline
         </button>
       </div>
     );
