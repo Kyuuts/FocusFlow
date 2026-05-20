@@ -625,13 +625,6 @@ function App() {
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{width: '24px', height: '24px'}} />
           Continue with Google
         </button>
-
-        <button 
-          onClick={() => setIsLoggedIn(true)}
-          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', marginTop: '24px', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
-        >
-          Skip & use offline
-        </button>
       </div>
     );
   }
