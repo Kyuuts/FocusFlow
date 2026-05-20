@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from './supabaseClient';
 
 const genAI = new GoogleGenerativeAI("AIzaSyANzbrlioac0wTwgKIsWCSnFMTJXCcU_sM");
-const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 const XP_PER_TASK = 20;
 const XP_PER_LEVEL = 100;
