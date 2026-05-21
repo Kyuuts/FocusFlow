@@ -80,6 +80,48 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const timerRef = useRef(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoadingPremium, setIsLoadingPremium] = useState(true);
+
+  const fetchProfile = async (uid) => {
+    setIsLoadingPremium(true);
+    const { data, error } = await supabase.from('profiles').select('is_premium').eq('id', uid).single();
+    if (data) setIsPremium(data.is_premium || false);
+    setIsLoadingPremium(false);
+  };
+
+  useEffect(() => {
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || '';
+    const isProd = clientKey.startsWith('Mid-client-');
+    const script = document.createElement('script');
+    script.src = isProd ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js';
+    script.setAttribute('data-client-key', clientKey);
+    script.async = true;
+    document.body.appendChild(script);
+    return () => { document.body.removeChild(script); }
+  }, []);
+
+  const handlePayment = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-snap-token', {
+        body: { user_id: user.id, email: user.email, name: username, amount: 15000 }
+      });
+      if (error) throw error;
+      
+      window.snap.pay(data.token, {
+        onSuccess: function(result) {
+          setIsPremium(true);
+          alert("Pembayaran berhasil! Akses Premium terbuka.");
+        },
+        onPending: function(result) { alert("Menunggu pembayaran Anda!"); },
+        onError: function(result) { alert("Pembayaran gagal!"); },
+        onClose: function() { console.log('User closed popup'); }
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memanggil API Pembayaran.");
+    }
+  };
 
   const level = Math.floor(xp / XP_PER_LEVEL) + 1;
   const levelProgress = ((xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100;
@@ -104,6 +146,9 @@ function App() {
         setUser(session.user);
         if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
+        fetchProfile(session.user.id);
+      } else {
+        setIsLoadingPremium(false);
       }
     });
 
@@ -112,9 +157,11 @@ function App() {
         setUser(session.user);
         if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
+        fetchProfile(session.user.id);
       } else {
         setUser(null);
         setIsLoggedIn(false);
+        setIsLoadingPremium(false);
       }
     });
 
@@ -628,6 +675,40 @@ function App() {
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '24px', height: '24px' }} />
           Continue with Google
         </button>
+      </div>
+    );
+  }
+
+  if (isLoadingPremium) {
+    return (
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)'}}>
+        <Loader2 size={48} className="spin" />
+        <p style={{marginTop: '16px', color: 'var(--text-secondary)'}}>Memuat data profil...</p>
+      </div>
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--text-primary)', padding: '20px', textAlign: 'center'}}>
+        <Target size={60} color="var(--primary)" style={{marginBottom: '20px'}}/>
+        <h2>Upgrade to Premium</h2>
+        <p style={{color: 'var(--text-secondary)', marginBottom: '30px', maxWidth: '300px'}}>Dapatkan akses tak terbatas ke FocusFlow dan AI Breakdown hanya dengan sekali bayar.</p>
+        
+        <div style={{backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', marginBottom: '24px'}}>
+          <h1 style={{fontSize: '2.5rem', marginBottom: '8px'}}>Rp 15.000</h1>
+          <p style={{color: 'var(--text-secondary)', fontSize: '0.9rem'}}>Lifetime Access</p>
+          <ul style={{listStyle: 'none', padding: 0, marginTop: '20px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+            <li style={{display: 'flex', alignItems: 'center', gap: '8px'}}><CheckCircle2 size={16} color="var(--primary)"/> AI Task Breakdown</li>
+            <li style={{display: 'flex', alignItems: 'center', gap: '8px'}}><CheckCircle2 size={16} color="var(--primary)"/> Global Leaderboard</li>
+            <li style={{display: 'flex', alignItems: 'center', gap: '8px'}}><CheckCircle2 size={16} color="var(--primary)"/> Cloud Sync</li>
+          </ul>
+        </div>
+        
+        <button className="btn-primary" style={{width: '100%', maxWidth: '320px', padding: '16px', fontSize: '1.1rem'}} onClick={handlePayment}>
+          Bayar Sekarang
+        </button>
+        <button onClick={async () => { await supabase.auth.signOut(); setIsLoggedIn(false); }} style={{marginTop: '16px', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 'bold'}}>Ganti Akun</button>
       </div>
     );
   }
