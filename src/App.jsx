@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Play, Pause, RotateCcw, Flame, Target, ListTodo, BarChart2, Medal, Check, Trophy, Plus, CheckCircle2, Sun, Moon, Search, MoreVertical, Brain, Clock, Swords, Shield, Star, Crown, Loader2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Flame, Target, ListTodo, BarChart2, Medal, Check, Trophy, Plus, CheckCircle2, Sun, Moon, Search, MoreVertical, Brain, Clock, Swords, Shield, Star, Crown, Loader2, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from './supabaseClient';
 
-const genAI = new GoogleGenerativeAI("AIzaSyANzbrlioac0wTwgKIsWCSnFMTJXCcU_sM");
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 const XP_PER_TASK = 20;
@@ -244,13 +244,12 @@ function App() {
   const toggleTask = (id, event) => {
     setTasks(tasks.map(t => {
       if (t.id === id) {
-        const isCompleting = !t.completed;
-        if (isCompleting) {
-          triggerConfetti(event);
-          setXp(prev => prev + XP_PER_TASK);
-          setTasksCompleted(prev => prev + 1);
-        }
-        return { ...t, completed: isCompleting };
+        if (t.completed) return t; // Cegah task diklik berkali-kali setelah selesai (mencegah XP farming)
+        
+        triggerConfetti(event);
+        setXp(prev => prev + XP_PER_TASK);
+        setTasksCompleted(prev => prev + 1);
+        return { ...t, completed: true };
       }
       return t;
     }));
@@ -633,9 +632,14 @@ function App() {
     <>
       <header className="header">
         <div className="logo"><Target size={24} color="var(--primary)" /> FocusFlow</div>
-        <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} style={{ width: '36px', height: '36px', borderRadius: '50%' }}>
-          {isDarkMode ? <Sun size={18} color="var(--text-primary)" /> : <Moon size={18} color="var(--text-primary)" />}
-        </button>
+        <div style={{display: 'flex', gap: '8px'}}>
+          <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {isDarkMode ? <Sun size={18} color="var(--text-primary)" /> : <Moon size={18} color="var(--text-primary)" />}
+          </button>
+          <button className="btn-icon" onClick={async () => { await supabase.auth.signOut(); setIsLoggedIn(false); setActiveTab('focus'); }} style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }} title="Logout">
+            <LogOut size={18} />
+          </button>
+        </div>
       </header>
       <main className="content">
         {activeTab === 'focus' && renderFocusTab()}
