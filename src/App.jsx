@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Play, Pause, RotateCcw, Flame, Target, ListTodo, BarChart2, Medal, Check, Trophy, Plus, CheckCircle2, Sun, Moon, Search, MoreVertical, Brain, Clock, Swords, Shield, Star, Crown, Loader2, LogOut } from 'lucide-react';
+import { Play, Pause, RotateCcw, Flame, Target, ListTodo, BarChart2, Medal, Check, Trophy, Plus, CheckCircle2, Sun, Moon, Search, MoreVertical, Brain, Clock, Swords, Shield, Star, Crown, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from './supabaseClient';
 
+// Mengambil API Key dari file .env (Aman dari crawler GitHub)
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+
+// Ganti string di dalam model: "..." sesuai dengan model yang ingin Ketua pakai
 const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 const XP_PER_TASK = 20;
@@ -21,7 +24,7 @@ const getRankDetails = (level) => {
 const toRoman = (num) => ['I', 'II', 'III', 'IV', 'V'][num - 1] || num;
 
 const getRankIcon = (rankName, size = 16) => {
-  switch(rankName) {
+  switch (rankName) {
     case 'Warrior': return <Swords size={size} />;
     case 'Elite': return <Shield size={size} />;
     case 'Master': return <Target size={size} />;
@@ -34,7 +37,7 @@ const getRankIcon = (rankName, size = 16) => {
 };
 
 const getRankColor = (rankName) => {
-  switch(rankName) {
+  switch (rankName) {
     case 'Warrior': return '#CD7F32';
     case 'Elite': return '#9CA3AF';
     case 'Master': return '#10B981';
@@ -53,7 +56,7 @@ function App() {
     const saved = localStorage.getItem('focusflow_theme');
     return saved ? saved === 'dark' : true;
   });
-  
+
   const [tasks, setTasks] = useState(() => {
     const saved = localStorage.getItem('focusflow_tasks');
     return saved ? JSON.parse(saved) : [];
@@ -140,16 +143,16 @@ function App() {
           .select('display_name, xp, avatar_url')
           .order('xp', { ascending: false })
           .limit(10);
-          
+
         if (data) setLeaderboardData(data);
       };
-      
+
       fetchLeaderboard();
-      
+
       const channel = supabase.channel('realtime_leaderboard')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchLeaderboard)
         .subscribe();
-        
+
       return () => {
         supabase.removeChannel(channel);
       };
@@ -202,25 +205,25 @@ function App() {
 
   const addTask = async () => {
     if (!newTaskText.trim()) return;
-    
+
     setIsGenerating(true);
     try {
       const prompt = `Lo adalah AI assistant untuk aplikasi produktivitas. User akan ngasih sebuah tugas besar atau tujuan. Tugas lu adalah mem-breakdown tugas tersebut menjadi 3 sampai 5 micro-tasks yang sangat actionable, spesifik, dan mudah dilakukan.\n\nAturan:\n- Return HANYA list micro-tasks.\n- Setiap baris diawali dengan tanda strip "-" dan spasi.\n- Jangan ada teks pengantar, penutup, atau bold markdown.\n\nTugas besar: ${newTaskText}`;
-      
+
       const result = await aiModel.generateContent(prompt);
       const responseText = result.response.text();
-      
+
       const generatedTasks = responseText
         .split('\n')
         .map(line => line.replace(/^-\s*/, '').replace(/^\*\s*/, '').trim())
         .filter(line => line.length > 0);
-        
+
       const newTasks = generatedTasks.map((text, i) => ({
-        id: Date.now() + i, 
-        text: text, 
+        id: Date.now() + i,
+        text: text,
         completed: false
       }));
-      
+
       setTasks(prev => [...newTasks, ...prev]);
       setNewTaskText('');
     } catch (error) {
@@ -244,12 +247,13 @@ function App() {
   const toggleTask = (id, event) => {
     setTasks(tasks.map(t => {
       if (t.id === id) {
-        if (t.completed) return t; // Cegah task diklik berkali-kali setelah selesai (mencegah XP farming)
-        
-        triggerConfetti(event);
-        setXp(prev => prev + XP_PER_TASK);
-        setTasksCompleted(prev => prev + 1);
-        return { ...t, completed: true };
+        const isCompleting = !t.completed;
+        if (isCompleting) {
+          triggerConfetti(event);
+          setXp(prev => prev + XP_PER_TASK);
+          setTasksCompleted(prev => prev + 1);
+        }
+        return { ...t, completed: isCompleting };
       }
       return t;
     }));
@@ -268,21 +272,21 @@ function App() {
 
   const renderFocusTab = () => (
     <div className="tab-content">
-      <div style={{marginBottom: '4px'}}>
-        <h2 style={{fontSize: '1.2rem', fontWeight: 700}}>Hello, {username || 'Warrior'}! 👋</h2>
-        <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Ready to crush your goals today?</p>
+      <div style={{ marginBottom: '4px' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Hello, {username || 'Warrior'}! 👋</h2>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ready to crush your goals today?</p>
       </div>
 
       <div className="input-section">
         <textarea className="task-input" placeholder="Ketik tugas besar lo di sini..." rows={2} value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} disabled={isGenerating} />
-        <button className="btn-primary" onClick={addTask} disabled={isGenerating} style={{opacity: isGenerating ? 0.7 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer'}}>
+        <button className="btn-primary" onClick={addTask} disabled={isGenerating} style={{ opacity: isGenerating ? 0.7 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer' }}>
           {isGenerating ? <><Loader2 size={16} className="spin" /> Thinking...</> : 'Breakdown!'}
         </button>
       </div>
 
       <div className="dashboard-grid">
         <div className="stat-card">
-          <div className="stat-icon" style={{backgroundColor: 'rgba(245, 158, 11, 0.1)'}}><Flame size={20} color="var(--gold)" /></div>
+          <div className="stat-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)' }}><Flame size={20} color="var(--gold)" /></div>
           <div className="stat-info">
             <h3>Streak</h3>
             <p>{streak} Days</p>
@@ -293,22 +297,22 @@ function App() {
             <h3>Level UP</h3>
             <p>{Math.round(levelProgress)}%</p>
           </div>
-          <div className="circle-progress-small" style={{'--progress': `${levelProgress}%`}}>
-            <div style={{position: 'absolute', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: getRankColor(currentRank.name)}}>
+          <div className="circle-progress-small" style={{ '--progress': `${levelProgress}%` }}>
+            <div style={{ position: 'absolute', inset: 0, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: getRankColor(currentRank.name) }}>
               {getRankIcon(currentRank.name, 18)}
               <span style={{
-                position: 'absolute', 
-                bottom: '0px', 
-                right: '0px', 
-                fontSize: '0.55rem', 
-                fontWeight: 'bold', 
-                backgroundColor: 'var(--app-bg)', 
+                position: 'absolute',
+                bottom: '0px',
+                right: '0px',
+                fontSize: '0.55rem',
+                fontWeight: 'bold',
+                backgroundColor: 'var(--app-bg)',
                 color: 'var(--text-primary)',
-                borderRadius: '50%', 
-                width: '14px', 
-                height: '14px', 
-                display: 'flex', 
-                alignItems: 'center', 
+                borderRadius: '50%',
+                width: '14px',
+                height: '14px',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
                 border: '1px solid var(--border-color)'
               }}>
@@ -323,18 +327,18 @@ function App() {
         <div className="timer-row">
           <div className="timer-display">{formatTime(timeLeft)}</div>
           {showCustomTime ? (
-            <form onSubmit={handleCustomTimeSubmit} style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-              <input 
-                type="number" 
-                value={customMinutes} 
-                onChange={(e) => setCustomMinutes(e.target.value)} 
-                style={{width: '60px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--app-bg)', color: 'var(--text-primary)'}}
+            <form onSubmit={handleCustomTimeSubmit} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="number"
+                value={customMinutes}
+                onChange={(e) => setCustomMinutes(e.target.value)}
+                style={{ width: '60px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--app-bg)', color: 'var(--text-primary)' }}
                 min="1"
                 autoFocus
               />
-              <span style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>min</span>
-              <button type="submit" className="btn-primary" style={{padding: '4px 8px', fontSize: '0.8rem'}}>Set</button>
-              <button type="button" onClick={() => setShowCustomTime(false)} style={{background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer'}}>✕</button>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>min</span>
+              <button type="submit" className="btn-primary" style={{ padding: '4px 8px', fontSize: '0.8rem' }}>Set</button>
+              <button type="button" onClick={() => setShowCustomTime(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>✕</button>
             </form>
           ) : (
             <select className="timer-select-pill" value={duration / 60} onChange={handleDurationChange}>
@@ -390,22 +394,22 @@ function App() {
 
       <div className="task-list">
         {tasks.length === 0 ? (
-          <div style={{textAlign: 'center', color: 'var(--text-secondary)', padding: '40px 20px'}}>No tasks yet. Break down a big task in the Focus tab!</div>
+          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '40px 20px' }}>No tasks yet. Break down a big task in the Focus tab!</div>
         ) : (
           tasks.map(task => (
             <div key={task.id} className="task-card-full">
               <div className="task-card-full-top">
-                <span style={{textDecoration: task.completed ? 'line-through' : 'none', color: task.completed ? 'var(--text-secondary)' : 'inherit'}}>{task.text}</span>
-                <button 
+                <span style={{ textDecoration: task.completed ? 'line-through' : 'none', color: task.completed ? 'var(--text-secondary)' : 'inherit' }}>{task.text}</span>
+                <button
                   onClick={(e) => { e.stopPropagation(); setTasks(tasks.filter(t => t.id !== task.id)); }}
-                  style={{background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px'}}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
                 >
                   ✕
                 </button>
               </div>
-              <div className="task-card-full-actions" style={{marginTop: '12px', justifyContent: 'flex-start'}}>
-                <button className="btn-focus-small" onClick={() => { setActiveTab('focus'); }}><Play size={16}/> Focus</button>
-                <button className={clsx("filter-pill", task.completed && 'active')} onClick={(e) => toggleTask(task.id, e)} style={{marginLeft: 'auto'}}>
+              <div className="task-card-full-actions" style={{ marginTop: '12px', justifyContent: 'flex-start' }}>
+                <button className="btn-focus-small" onClick={() => { setActiveTab('focus'); }}><Play size={16} /> Focus</button>
+                <button className={clsx("filter-pill", task.completed && 'active')} onClick={(e) => toggleTask(task.id, e)} style={{ marginLeft: 'auto' }}>
                   {task.completed ? 'Completed' : 'Mark Done'}
                 </button>
               </div>
@@ -427,22 +431,22 @@ function App() {
             border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
           }}>
-            <h3 style={{margin: 0, fontSize: '1.2rem'}}>Add New Task</h3>
-            <textarea 
-              className="task-input" 
-              placeholder="What do you need to do?" 
-              rows={3} 
-              value={modalTaskText} 
+            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Add New Task</h3>
+            <textarea
+              className="task-input"
+              placeholder="What do you need to do?"
+              rows={3}
+              value={modalTaskText}
               onChange={(e) => setModalTaskText(e.target.value)}
               autoFocus
             />
-            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px'}}>
-              <button 
-                onClick={() => setShowAddModal(false)} 
-                style={{padding: '10px 16px', borderRadius: '8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600}}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{ padding: '10px 16px', borderRadius: '8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
               >Cancel</button>
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 onClick={handleModalAddTask}
               >Add Task</button>
             </div>
@@ -459,42 +463,42 @@ function App() {
         <p className="page-subtitle">Stay consistent, one focus session at a time.</p>
       </div>
 
-      <div className="stat-card" style={{flexDirection: 'column', alignItems: 'flex-start', padding: '16px 20px'}}>
-        <h3 style={{fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px'}}>Your Identity</h3>
-        <input 
-          type="text" 
-          value={username} 
-          onChange={(e) => setUsername(e.target.value)} 
+      <div className="stat-card" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '16px 20px' }}>
+        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Your Identity</h3>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           placeholder="Enter your hero name..."
           style={{
-            width: '100%', background: 'transparent', border: 'none', 
-            borderBottom: '2px solid var(--border-color)', color: 'var(--primary)', 
+            width: '100%', background: 'transparent', border: 'none',
+            borderBottom: '2px solid var(--border-color)', color: 'var(--primary)',
             fontSize: '1.2rem', fontWeight: 'bold', outline: 'none', padding: '4px 0'
           }}
         />
       </div>
 
       <div className="circle-progress-card">
-        <div className="circle-progress" style={{'--progress': `${levelProgress}%`}}>
+        <div className="circle-progress" style={{ '--progress': `${levelProgress}%` }}>
           <div className="circle-content">
             <h2>{xp}</h2>
             <p>DAILY XP</p>
           </div>
         </div>
-        <p style={{fontSize: '0.85rem', color: 'var(--primary)'}}>{XP_PER_LEVEL - (xp % XP_PER_LEVEL)} XP to Next Rank ✨</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--primary)' }}>{XP_PER_LEVEL - (xp % XP_PER_LEVEL)} XP to Next Rank ✨</p>
       </div>
 
       <div className="dashboard-grid">
-        <div className="stat-card" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
-          <div className="stat-icon" style={{backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--gold)'}}><Flame size={20} /></div>
-          <div className="stat-info" style={{marginTop: '8px'}}>
+        <div className="stat-card" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div className="stat-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--gold)' }}><Flame size={20} /></div>
+          <div className="stat-info" style={{ marginTop: '8px' }}>
             <p>{streak} Days</p>
             <h3>Current Streak</h3>
           </div>
         </div>
-        <div className="stat-card" style={{flexDirection: 'column', alignItems: 'flex-start'}}>
-          <div className="stat-icon" style={{backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)'}}><CheckCircle2 size={20} /></div>
-          <div className="stat-info" style={{marginTop: '8px'}}>
+        <div className="stat-card" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div className="stat-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}><CheckCircle2 size={20} /></div>
+          <div className="stat-info" style={{ marginTop: '8px' }}>
             <p>{tasksCompleted}</p>
             <h3>Tasks Completed</h3>
           </div>
@@ -504,19 +508,19 @@ function App() {
       <div className="deep-focus-card">
         <div className="deep-focus-icon"><Brain size={24} /></div>
         <div className="deep-focus-info">
-          <div style={{fontWeight: 700}}>Deep Focus</div>
-          <div style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>Average Depth Level</div>
+          <div style={{ fontWeight: 700 }}>Deep Focus</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Average Depth Level</div>
         </div>
         <div className="deep-focus-value">85%</div>
       </div>
 
       <div>
-        <h3 style={{fontSize: '0.9rem', marginBottom: '12px'}}>Activity (Last 7 Days)</h3>
+        <h3 style={{ fontSize: '0.9rem', marginBottom: '12px' }}>Activity (Last 7 Days)</h3>
         <div className="chart-card">
           <div className="chart-bars">
-            {['M','T','W','T','F','S','S'].map((day, i) => (
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
               <div key={i} className="chart-bar-container">
-                <div className={clsx("chart-bar", day==='F' && 'today')} style={{height: `${Math.random() * 60 + 20}px`}}></div>
+                <div className={clsx("chart-bar", day === 'F' && 'today')} style={{ height: `${Math.random() * 60 + 20}px` }}></div>
                 <div className="chart-label">{day}</div>
               </div>
             ))}
@@ -529,26 +533,26 @@ function App() {
   const renderBadgesTab = () => (
     <div className="tab-content">
       <div className="rank-card">
-        <div style={{color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px'}}>Current Rank</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Current Rank</div>
         <div className={clsx('hexagon', currentRank.className)}>{toRoman(currentRank.stage)}</div>
         <div>
           <div className="rank-title">{currentRank.name} {toRoman(currentRank.stage)}</div>
           <div className="rank-xp">{xp.toLocaleString()} XP</div>
         </div>
-        <div style={{width: '100%', marginTop: '8px'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>
+        <div style={{ width: '100%', marginTop: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
             <span>{currentRank.name} {toRoman(currentRank.stage)}</span>
-            <span>{currentRank.stage === 5 ? getRankDetails(level+1).name + ' I' : currentRank.name + ' ' + toRoman(currentRank.stage + 1)}</span>
+            <span>{currentRank.stage === 5 ? getRankDetails(level + 1).name + ' I' : currentRank.name + ' ' + toRoman(currentRank.stage + 1)}</span>
           </div>
-          <div className="progress-bar-container"><div className="progress-bar" style={{width: `${levelProgress}%`}}></div></div>
+          <div className="progress-bar-container"><div className="progress-bar" style={{ width: `${levelProgress}%` }}></div></div>
         </div>
-        <div style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px'}}>Keep the streak alive!</div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Keep the streak alive!</div>
       </div>
 
       <div className="leaderboard">
-        <h3><Trophy size={18} color="var(--gold)"/> Global Leaderboard</h3>
-        <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px'}}>Compete with focus warriors worldwide.</p>
-        
+        <h3><Trophy size={18} color="var(--gold)" /> Global Leaderboard</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>Compete with focus warriors worldwide.</p>
+
         {leaderboardData.length > 0 ? (
           leaderboardData.map((lbUser, idx) => {
             const userLevel = Math.floor((lbUser.xp || 0) / XP_PER_LEVEL) + 1;
@@ -556,7 +560,7 @@ function App() {
             return (
               <div key={idx} className="leaderboard-item">
                 <span className="lb-rank">{idx + 1}</span>
-                {lbUser.avatar_url && <img src={lbUser.avatar_url} alt="avatar" style={{width: '28px', height: '28px', borderRadius: '50%'}} />}
+                {lbUser.avatar_url && <img src={lbUser.avatar_url} alt="avatar" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />}
                 <div className="lb-info">
                   <div className="lb-name">{lbUser.display_name}</div>
                   <div className="lb-level">{userRankInfo.name} {toRoman(userRankInfo.stage)}</div>
@@ -566,14 +570,14 @@ function App() {
             );
           })
         ) : (
-          <div style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem'}}>
-            <Loader2 className="spin" size={20} style={{margin: '0 auto 8px'}}/>
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            <Loader2 className="spin" size={20} style={{ margin: '0 auto 8px' }} />
             Loading live leaderboard...
           </div>
         )}
 
-        <div className="leaderboard-item you" style={{marginTop: '12px'}}>
-          <span className="lb-rank" style={{color: 'var(--primary)'}}>-</span>
+        <div className="leaderboard-item you" style={{ marginTop: '12px' }}>
+          <span className="lb-rank" style={{ color: 'var(--primary)' }}>-</span>
           <div className="lb-info">
             <div className="lb-name">You</div>
             <div className="lb-level">{currentRank.name} {toRoman(currentRank.stage)}</div>
@@ -586,34 +590,34 @@ function App() {
 
   if (showSplash) {
     return (
-      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)'}}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)' }}>
         <Target size={72} className="pulse-anim" />
-        <h1 style={{marginTop: '20px', fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)'}} className="fade-up-anim">FocusFlow</h1>
-        <p style={{color: 'var(--text-secondary)', marginTop: '8px'}} className="fade-up-anim">Stay focused. Get rewarded.</p>
+        <h1 style={{ marginTop: '20px', fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)' }} className="fade-up-anim">FocusFlow</h1>
+        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }} className="fade-up-anim">Stay focused. Get rewarded.</p>
       </div>
     );
   }
 
   if (!isLoggedIn) {
     return (
-      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px', textAlign: 'center', backgroundColor: 'var(--app-bg)', color: 'var(--text-primary)'}}>
-        <div className="logo" style={{marginBottom: '24px', fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px'}}><Target size={40} color="var(--primary)" /> FocusFlow</div>
-        <h1 style={{marginBottom: '12px'}}>Welcome Back</h1>
-        <p style={{color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '300px', lineHeight: '1.5'}}>Log in to continue your focus journey and save your progress securely.</p>
-        
-        <button 
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px', textAlign: 'center', backgroundColor: 'var(--app-bg)', color: 'var(--text-primary)' }}>
+        <div className="logo" style={{ marginBottom: '24px', fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}><Target size={40} color="var(--primary)" /> FocusFlow</div>
+        <h1 style={{ marginBottom: '12px' }}>Welcome Back</h1>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '300px', lineHeight: '1.5' }}>Log in to continue your focus journey and save your progress securely.</p>
+
+        <button
           onClick={async () => {
-            const { error } = await supabase.auth.signInWithOAuth({ 
+            const { error } = await supabase.auth.signInWithOAuth({
               provider: 'google',
               options: { redirectTo: window.location.origin }
             });
             if (error) alert("Gagal login: " + error.message);
           }}
           style={{
-            display: 'flex', alignItems: 'center', gap: '12px', 
-            padding: '14px 28px', borderRadius: '12px', 
-            border: '1px solid var(--border-color)', 
-            backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)', 
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '14px 28px', borderRadius: '12px',
+            border: '1px solid var(--border-color)',
+            backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)',
             fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
             transition: 'all 0.2s ease'
@@ -621,7 +625,7 @@ function App() {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{width: '24px', height: '24px'}} />
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '24px', height: '24px' }} />
           Continue with Google
         </button>
       </div>
@@ -632,14 +636,9 @@ function App() {
     <>
       <header className="header">
         <div className="logo"><Target size={24} color="var(--primary)" /> FocusFlow</div>
-        <div style={{display: 'flex', gap: '8px'}}>
-          <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isDarkMode ? <Sun size={18} color="var(--text-primary)" /> : <Moon size={18} color="var(--text-primary)" />}
-          </button>
-          <button className="btn-icon" onClick={async () => { await supabase.auth.signOut(); setIsLoggedIn(false); setActiveTab('focus'); }} style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }} title="Logout">
-            <LogOut size={18} />
-          </button>
-        </div>
+        <button className="btn-icon" onClick={() => setIsDarkMode(!isDarkMode)} style={{ width: '36px', height: '36px', borderRadius: '50%' }}>
+          {isDarkMode ? <Sun size={18} color="var(--text-primary)" /> : <Moon size={18} color="var(--text-primary)" />}
+        </button>
       </header>
       <main className="content">
         {activeTab === 'focus' && renderFocusTab()}
