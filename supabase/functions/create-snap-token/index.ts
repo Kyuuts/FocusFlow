@@ -44,6 +44,11 @@ serve(async (req) => {
 
     const data = await response.json()
 
+    if (!response.ok || !data.token) {
+      const errorMsg = data.error_messages ? data.error_messages.join(', ') : (data.message || JSON.stringify(data) || 'Gagal membuat token pembayaran dari Midtrans');
+      throw new Error(`Midtrans Error: ${errorMsg}`);
+    }
+
     return new Response(JSON.stringify({ token: data.token, order_id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

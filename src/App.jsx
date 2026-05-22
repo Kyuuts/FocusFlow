@@ -106,7 +106,19 @@ function App() {
       const { data, error } = await supabase.functions.invoke('create-snap-token', {
         body: { user_id: user.id, email: user.email, name: username, amount: 15000 }
       });
-      if (error) throw error;
+      
+      if (error) {
+        let errorMsg = error.message;
+        if (error.context) {
+          try {
+            const body = await error.context.json();
+            if (body && body.error) {
+              errorMsg = body.error;
+            }
+          } catch (_) {}
+        }
+        throw new Error(errorMsg);
+      }
       
       window.snap.pay(data.token, {
         onSuccess: function(result) {
@@ -119,7 +131,7 @@ function App() {
       });
     } catch (err) {
       console.error(err);
-      alert("Gagal memanggil API Pembayaran.");
+      alert("Gagal memanggil API Pembayaran: " + (err.message || err));
     }
   };
 
