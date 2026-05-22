@@ -92,6 +92,7 @@ function App() {
 
   useEffect(() => {
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || '';
+    console.log("FocusFlow: Midtrans Client Key is", clientKey ? `present (starts with ${clientKey.substring(0, 10)}...)` : "MISSING");
     const isProd = clientKey.startsWith('Mid-client-');
     const script = document.createElement('script');
     script.src = isProd ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js';
