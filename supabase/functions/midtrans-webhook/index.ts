@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 serve(async (req) => {
   try {
     const body = await req.json()
-    const { order_id, transaction_status, gross_amount, payment_type } = body
+    const { order_id, transaction_status, gross_amount, payment_type, custom_field1 } = body
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -12,7 +12,7 @@ serve(async (req) => {
     if (transaction_status === 'capture' || transaction_status === 'settlement') {
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
       
-      const user_id = order_id.split('-')[1]
+      const user_id = custom_field1 || order_id.split('-')[1]
 
       // Update user to premium
       await supabase

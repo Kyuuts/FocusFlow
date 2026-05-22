@@ -16,7 +16,7 @@ serve(async (req) => {
 
     if (!MIDTRANS_SERVER_KEY) throw new Error("MIDTRANS_SERVER_KEY is not set")
 
-    const order_id = `ORDER-${user_id}-${Date.now()}`
+    const order_id = `ORDER-${Date.now()}`
     const authString = btoa(`${MIDTRANS_SERVER_KEY}:`)
     
     // Create transaction in Midtrans (Auto detect Prod/Sandbox)
@@ -38,7 +38,8 @@ serve(async (req) => {
         customer_details: {
           first_name: name,
           email: email
-        }
+        },
+        custom_field1: user_id
       })
     })
 
