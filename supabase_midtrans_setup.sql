@@ -29,3 +29,20 @@ CREATE POLICY "Users can view their own transactions"
 -- Kita tidak membuat policy INSERT atau UPDATE untuk tabel transactions di sini.
 -- Penambahan dan perubahan status transaksi nantinya HANYA akan dilakukan secara aman 
 -- dari dalam Supabase Edge Functions (backend), bukan dari client-side.
+
+-- 5. Keamanan Ekstra: Cegah client-side memodifikasi kolom is_premium secara ilegal
+CREATE OR REPLACE FUNCTION public.protect_premium_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_premium IS DISTINCT FROM OLD.is_premium AND auth.role() = 'authenticated' THEN
+    RAISE EXCEPTION 'Anda tidak memiliki akses untuk mengubah status premium secara langsung.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_protect_premium_status ON public.profiles;
+CREATE TRIGGER trg_protect_premium_status
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE PROCEDURE public.protect_premium_status();
