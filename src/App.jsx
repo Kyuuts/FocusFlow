@@ -82,6 +82,7 @@ function App() {
   const timerRef = useRef(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isLoadingPremium, setIsLoadingPremium] = useState(true);
+  const [showAgreement, setShowAgreement] = useState(false);
 
   const fetchProfile = async (uid) => {
     setIsLoadingPremium(true);
@@ -160,6 +161,7 @@ function App() {
         if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
         fetchProfile(session.user.id);
+        if (!localStorage.getItem(`focusflow_agreed_${session.user.id}`)) setShowAgreement(true);
       } else {
         setIsLoadingPremium(false);
       }
@@ -171,10 +173,12 @@ function App() {
         if (session.user.user_metadata?.full_name) setUsername(session.user.user_metadata.full_name);
         setIsLoggedIn(true);
         fetchProfile(session.user.id);
+        if (!localStorage.getItem(`focusflow_agreed_${session.user.id}`)) setShowAgreement(true);
       } else {
         setUser(null);
         setIsLoggedIn(false);
         setIsLoadingPremium(false);
+        setShowAgreement(false);
       }
     });
 
@@ -307,13 +311,11 @@ function App() {
   const toggleTask = (id, event) => {
     setTasks(tasks.map(t => {
       if (t.id === id) {
-        const isCompleting = !t.completed;
-        if (isCompleting) {
-          triggerConfetti(event);
-          setXp(prev => prev + XP_PER_TASK);
-          setTasksCompleted(prev => prev + 1);
-        }
-        return { ...t, completed: isCompleting };
+        if (t.completed) return t; // Cegah klik berkali-kali jika sudah selesai
+        triggerConfetti(event);
+        setXp(prev => prev + XP_PER_TASK);
+        setTasksCompleted(prev => prev + 1);
+        return { ...t, completed: true };
       }
       return t;
     }));
@@ -648,6 +650,11 @@ function App() {
     </div>
   );
 
+  const handleAgree = () => {
+    localStorage.setItem(`focusflow_agreed_${user.id}`, 'true');
+    setShowAgreement(false);
+  };
+
   if (showSplash) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)' }}>
@@ -697,6 +704,31 @@ function App() {
       <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--primary)'}}>
         <Loader2 size={48} className="spin" />
         <p style={{marginTop: '16px', color: 'var(--text-secondary)'}}>Memuat data profil...</p>
+      </div>
+    );
+  }
+
+  if (showAgreement) {
+    return (
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'var(--app-bg)', color: 'var(--text-primary)', padding: '20px', textAlign: 'center'}}>
+        <Shield size={60} color="var(--primary)" style={{marginBottom: '20px'}}/>
+        <h2>FocusFlow Terms of Service</h2>
+        <p style={{color: 'var(--text-secondary)', marginBottom: '30px', maxWidth: '350px'}}>Welcome! Please review and agree to our terms before starting your focus journey.</p>
+        
+        <div style={{backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '400px', marginBottom: '24px', textAlign: 'left', maxHeight: '40vh', overflowY: 'auto'}}>
+          <p style={{marginBottom: '12px', fontWeight: 'bold'}}>By using FocusFlow, you agree to:</p>
+          <ul style={{listStyle: 'disc', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--text-secondary)'}}>
+            <li>Use the app to genuinely improve your productivity and time management.</li>
+            <li>Maintain fair play: Do not exploit bugs or loopholes (e.g. manipulating task checks) to artificially inflate your XP or Rank.</li>
+            <li>Respect the community on the Global Leaderboard.</li>
+            <li>Focus and crush your goals!</li>
+          </ul>
+        </div>
+        
+        <button className="btn-primary" style={{width: '100%', maxWidth: '400px', padding: '16px', fontSize: '1.1rem'}} onClick={handleAgree}>
+          I Agree & Continue
+        </button>
+        <button onClick={async () => { await supabase.auth.signOut(); setIsLoggedIn(false); }} style={{marginTop: '16px', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 'bold'}}>Cancel & Logout</button>
       </div>
     );
   }
